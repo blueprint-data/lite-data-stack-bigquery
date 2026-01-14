@@ -1,0 +1,8 @@
+version: 2
+sources:
+  - name: metabase_github
+    description: Metabase's Github repository data
+    schema: prod_tap_github_metabase
+    tables:
+      - name: commits
+      - name: releases

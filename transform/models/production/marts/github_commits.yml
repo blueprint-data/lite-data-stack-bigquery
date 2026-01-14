@@ -1,0 +1,173 @@
+version: 2
+
+models:
+  - name: github_commits
+    description: |
+      Production table containing all GitHub commits from the Metabase repository.
+      This model provides a clean, flattened view of commit data including author information,
+      commit metadata, and time dimensions for analysis.
+    columns:
+      - name: sha
+        description: The unique SHA-1 hash identifier for the commit. Primary key.
+        tests:
+          - unique
+          - not_null
+
+      - name: org
+        description: The GitHub organization name (e.g., 'metabase').
+
+      - name: repo
+        description: The GitHub repository name (e.g., 'metabase').
+
+      - name: full_repo_name
+        description: The full repository name in 'org/repo' format (e.g., 'metabase/metabase').
+
+      - name: repo_id
+        description: The unique GitHub repository ID.
+
+      - name: node_id
+        description: The GitHub GraphQL node ID for the commit.
+
+      - name: commit_api_url
+        description: The GitHub API URL for the commit.
+
+      - name: commit_github_url
+        description: The GitHub web UI URL for the commit.
+
+      - name: commit_timestamp
+        description: The timestamp when the commit was made.
+        tests:
+          - not_null
+
+      - name: commit_message
+        description: The full commit message including title and body.
+
+      - name: comment_count
+        description: The number of comments on the commit.
+
+      - name: pull_request_number
+        description: The pull request number extracted from the commit message (e.g., #12345).
+
+      - name: commit_type
+        description: |
+          The type of commit based on conventional commit patterns.
+          Values: feature, fix, docs, refactor, test, chore, performance, style, ci, build, other.
+
+      - name: git_author_name
+        description: The name of the author from the git commit metadata.
+
+      - name: git_author_email
+        description: The email of the author from the git commit metadata.
+        tests:
+          - not_null
+
+      - name: git_author_timestamp
+        description: The timestamp when the author created the commit.
+
+      - name: git_committer_name
+        description: The name of the committer from the git commit metadata.
+
+      - name: git_committer_email
+        description: The email of the committer from the git commit metadata.
+
+      - name: git_committer_timestamp
+        description: The timestamp when the committer committed the changes.
+
+      - name: is_merge_commit
+        description: Boolean flag indicating if the commit is a merge commit (author != committer).
+
+      - name: is_verified
+        description: Boolean flag indicating if the commit signature is verified.
+
+      - name: verification_reason
+        description: The reason for the verification status (e.g., 'valid', 'unsigned').
+
+      - name: verified_at
+        description: The timestamp when the commit was verified.
+
+      - name: tree_sha
+        description: The SHA of the git tree object for this commit.
+
+      - name: tree_url
+        description: The GitHub API URL for the tree object.
+
+      - name: github_author_id
+        description: The GitHub user ID of the commit author.
+        tests:
+          - relationships:
+              config:
+                severity: warn
+              arguments:
+                to: ref('github_committers')
+                field: committer_id
+        meta:
+          metabase.semantic_type: type/FK
+
+      - name: github_author_login
+        description: The GitHub username of the commit author.
+
+      - name: github_author_avatar_url
+        description: The URL to the GitHub author's avatar image.
+
+      - name: github_author_profile_url
+        description: The URL to the GitHub author's profile page.
+
+      - name: github_author_type
+        description: The type of GitHub account (e.g., 'User', 'Bot').
+
+      - name: github_author_is_site_admin
+        description: Boolean flag indicating if the author is a GitHub site administrator.
+
+      - name: github_committer_id
+        description: The GitHub user ID of the committer.
+
+      - name: github_committer_login
+        description: The GitHub username of the committer.
+
+      - name: github_committer_avatar_url
+        description: The URL to the GitHub committer's avatar image.
+
+      - name: github_committer_profile_url
+        description: The URL to the GitHub committer's profile page.
+
+      - name: github_committer_type
+        description: The type of GitHub account for the committer (e.g., 'User', 'Bot').
+
+      - name: github_committer_is_site_admin
+        description: Boolean flag indicating if the committer is a GitHub site administrator.
+
+      - name: commit_date
+        description: The date portion of the commit timestamp (DATE type).
+
+      - name: commit_week
+        description: The week start date for the commit (truncated to week).
+
+      - name: commit_month
+        description: The month start date for the commit (truncated to month).
+
+      - name: commit_quarter
+        description: The quarter start date for the commit (truncated to quarter).
+
+      - name: commit_year
+        description: The year start date for the commit (truncated to year).
+
+      - name: commit_day_of_week
+        description: The day of week for the commit (1=Sunday, 7=Saturday).
+
+      - name: commit_hour
+        description: The hour of day for the commit (0-23).
+
+      - name: _sdc_extracted_at
+        description: Stitch metadata - timestamp when data was extracted from the source.
+
+      - name: _sdc_received_at
+        description: Stitch metadata - timestamp when data was received by Stitch.
+
+      - name: _sdc_batched_at
+        description: Stitch metadata - timestamp when data was batched for loading.
+
+      - name: _sdc_sequence
+        description: Stitch metadata - sequence number for ordering records.
+
+      - name: dbt_updated_at
+        description: Timestamp when the record was last updated by dbt.

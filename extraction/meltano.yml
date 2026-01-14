@@ -1,58 +1,40 @@
 default_environment: dev
 
-project_id: lite-data-stack-postgres
-
-send_anonymous_usage_stats: false
+project_id: lite-data-stack-bigquery
 
 plugins:
   extractors:
-    - name: tap-rest-api-msdk
-      variant: widen
-      pip_url: tap-rest-api-msdk
+  - name: tap-github
+    variant: meltanolabs
+    pip_url: meltanolabs-tap-github
+    config:
+      auth_token: ${TAP_GITHUB_AUTH_TOKEN}
 
-    # Rick & Morty extractor
-    - name: tap-rest-rickandmorty
-      inherit_from: tap-rest-api-msdk
-      config:
-        api_url: https://rickandmortyapi.com/api
-        pagination_request_style: jsonpath_paginator
-        next_page_token_path: "$.info.next.`split(=, 1, 1)`"
-        streams:
-          - name: characters
-            path: /character
-            records_path: "$.results[*]"
-            primary_keys: [id]
-            next_page_token_path: "$.info.next"
-
-          - name: episodes
-            path: /episode
-            records_path: "$.results[*]"
-            primary_keys: [id]
-            next_page_token_path: "$.info.next"
-
-          - name: locations
-            path: /location
-            records_path: "$.results[*]"
-            primary_keys: [id]
-            next_page_token_path: "$.info.next"
+  - name: tap-github-metabase
+    inherit_from: tap-github
+    config:
+      repositories:
+      - metabase/metabase
+      - meltanolabs/meltanolabs
+    select:
+    - commits.*
+    - releases.*
 
   loaders:
-    - name: target-postgres
-      variant: meltanolabs
-      pip_url: meltanolabs-target-postgres
-      config:
-        host: ${TARGET_POSTGRES_HOST}
-        port: ${TARGET_POSTGRES_PORT}
-        user: ${TARGET_POSTGRES_USER}
-        password: ${TARGET_POSTGRES_PASSWORD}
-        dbname: ${TARGET_POSTGRES_DATABASE}
-        ssl: true
-        default_target_schema: ${MELTANO_ENVIRONMENT}_${MELTANO_EXTRACTOR_NAMESPACE}
-    - name: target-jsonl
-      variant: andyh1203
-      pip_url: target-jsonl
+  - name: target-jsonl
+    variant: andyh1203
+    pip_url: target-jsonl
+  - name: target-bigquery
+    variant: z3z1ma
+    pip_url: git+https://github.com/z3z1ma/target-bigquery.git
+    config:
+      project: ${TARGET_BIGQUERY_PROJECT}
+      dataset: ${MELTANO_ENVIRONMENT}_${MELTANO_EXTRACTOR_NAMESPACE}
+      location: ${TARGET_BIGQUERY_LOCATION}
+      credentials_path: ${TARGET_BIGQUERY_CREDENTIALS_PATH}
+      denormalized: true
 
 environments:
-  - name: dev
-  - name: ci
-  - name: prod
+- name: dev
+- name: ci
+- name: prod

@@ -1,0 +1,179 @@
+version: 2
+
+models:
+  - name: github_committers
+    description: |
+      Comprehensive dataset of all GitHub committers with detailed statistics and metrics.
+      This model aggregates commit activity, patterns, and productivity metrics for each contributor.
+      Includes historical stats, recent activity, time patterns, and ranking information.
+    columns:
+      - name: committer_id
+        description: The unique GitHub user ID of the committer. Primary key.
+        tests:
+          - unique
+          - not_null
+
+      - name: github_login
+        description: The GitHub username/login of the committer.
+
+      - name: avatar_url
+        description: The URL to the committer's GitHub avatar image.
+
+      - name: profile_url
+        description: The URL to the committer's GitHub profile page.
+
+      - name: account_type
+        description: The type of GitHub account (e.g., 'User', 'Bot', 'Organization').
+
+      - name: is_site_admin
+        description: Boolean flag indicating if the committer is a GitHub site administrator.
+
+      - name: total_commits
+        description: Total number of commits made by this committer across all time.
+        tests:
+          - not_null
+
+      - name: repos_contributed_to
+        description: Number of unique repositories the committer has contributed to.
+
+      - name: active_days
+        description: Number of unique days on which the committer made at least one commit.
+
+      - name: days_active_span
+        description: Number of days between the first and last commit.
+
+      - name: first_commit_at
+        description: Timestamp of the committer's first commit.
+        tests:
+          - not_null
+
+      - name: last_commit_at
+        description: Timestamp of the committer's most recent commit.
+        tests:
+          - not_null
+
+      - name: days_since_last_commit
+        description: Number of days since the committer's last commit.
+
+      - name: activity_status
+        description: |
+          Current activity level of the committer.
+          Values: Very Active (commits in last 30 days), Active (last 90 days),
+          Moderately Active (last 180 days), Less Active (last 365 days), Inactive.
+
+      - name: fix_commits
+        description: Number of commits classified as bug fixes.
+
+      - name: feature_commits
+        description: Number of commits classified as new features.
+
+      - name: docs_commits
+        description: Number of commits classified as documentation changes.
+
+      - name: refactor_commits
+        description: Number of commits classified as refactoring.
+
+      - name: test_commits
+        description: Number of commits classified as test additions/changes.
+
+      - name: chore_commits
+        description: Number of commits classified as maintenance/chores.
+
+      - name: performance_commits
+        description: Number of commits classified as performance improvements.
+
+      - name: other_commits
+        description: Number of commits that don't fit other type categories.
+
+      - name: fix_commits_pct
+        description: Percentage of total commits that are bug fixes.
+
+      - name: feature_commits_pct
+        description: Percentage of total commits that are new features.
+
+      - name: docs_commits_pct
+        description: Percentage of total commits that are documentation.
+
+      - name: refactor_commits_pct
+        description: Percentage of total commits that are refactoring.
+
+      - name: verified_commits
+        description: Number of commits with verified signatures.
+
+      - name: unverified_commits
+        description: Number of commits without verified signatures.
+
+      - name: verification_rate_pct
+        description: Percentage of commits with verified signatures.
+
+      - name: merge_commits
+        description: Number of merge commits (where author != committer).
+
+      - name: pr_commits
+        description: Number of commits associated with pull requests.
+
+      - name: unique_prs
+        description: Number of unique pull requests the committer contributed to.
+
+      - name: merge_commit_pct
+        description: Percentage of commits that are merge commits.
+
+      - name: commits_last_30_days
+        description: Number of commits made in the last 30 days.
+
+      - name: commits_last_90_days
+        description: Number of commits made in the last 90 days.
+
+      - name: commits_last_180_days
+        description: Number of commits made in the last 180 days.
+
+      - name: commits_last_365_days
+        description: Number of commits made in the last 365 days.
+
+      - name: active_days_last_30
+        description: Number of unique days with commits in the last 30 days.
+
+      - name: active_days_last_90
+        description: Number of unique days with commits in the last 90 days.
+
+      - name: active_days_last_365
+        description: Number of unique days with commits in the last 365 days.
+
+      - name: weekend_commits
+        description: Number of commits made on weekends (Saturday/Sunday).
+
+      - name: weekday_commits
+        description: Number of commits made on weekdays (Monday-Friday).
+
+      - name: business_hours_commits
+        description: Number of commits made during business hours (9 AM - 5 PM).
+
+      - name: off_hours_commits
+        description: Number of commits made outside business hours.
+
+      - name: most_active_hour
+        description: The hour of day (0-23) when the committer is most active.
+
+      - name: most_active_day_of_week
+        description: The day of week (1=Sunday, 7=Saturday) when the committer is most active.
+
+      - name: avg_commits_per_active_day
+        description: Average number of commits per day on days when the committer was active.
+
+      - name: max_commits_in_day
+        description: Maximum number of commits made in a single day.
+
+      - name: commits_per_active_day
+        description: Total commits divided by number of active days.
+
+      - name: avg_commits_per_day_in_span
+        description: Average commits per day across the entire active span (first to last commit).
+
+      - name: rank_by_total_commits
+        description: Ranking of the committer by total number of commits (1 = most commits).
+
+      - name: rank_by_recent_activity
+        description: Ranking of the committer by activity in the last 90 days (1 = most active).
+
+      - name: dbt_updated_at
+        description: Timestamp when the record was last updated by dbt.

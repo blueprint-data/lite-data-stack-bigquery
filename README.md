@@ -2,7 +2,7 @@
 
 ## What is this?
 
-This template creates a simple data pipeline: it extracts data from a public API (Rick & Morty), stores it in BigQuery, and then transforms it into ready-to-use tables. You do not need to know Meltano or dbt to use it; the README guides you step by step.
+This template creates a simple data pipeline: it extracts data from the GitHub API, stores it in BigQuery, and then transforms it into ready-to-use tables. You do not need to know Meltano or dbt to use it; the README guides you step by step.
 
 It is aimed at small teams or projects starting their first stack: quick to spin up, easy to understand, and with CI/CD ready to automate tests and documentation.
 
@@ -21,11 +21,24 @@ Minimum requirements:
 - [req] A Google Cloud project with BigQuery enabled
 - [req] A BigQuery dataset and a service account JSON key
 
-1) [DB] Create a BigQuery dataset
+1) [GCP] Create a GCP project and service accounts
 
-Create a dataset in your GCP project and a service account with BigQuery permissions. Download the JSON key file.
+If you do not have a Google Cloud account, create one. If you already have GCP, create a new project for this stack.
 
-2) [CFG] Configure variables
+In IAM & Admin:
+- Go to Service Accounts and create one account for dbt and one for Meltano.
+- Leave roles empty (no roles yet).
+- For each service account, create a JSON key and download it.
+- Rename the files (for example): `dbt-service-account.json` and `meltano-service-account.json`.
+- Go back to IAM and grant access to each service account email
+  (example: `meltano@data.iam.gserviceaccount.com`).
+- Assign the role `BigQuery Data Owner`.
+
+2) [DB] Create a BigQuery dataset
+
+Create a dataset in your GCP project (this will hold raw and modeled data).
+
+3) [CFG] Configure variables
 
 ```bash
 cd PROJECT_NAME
@@ -47,20 +60,20 @@ TAP_GITHUB_AUTH_TOKEN=ghp_xxx
 
 > [!] WARNING: dbt and Meltano should point to the same BigQuery project/dataset for the first run.
 
-3) [EXT] Run extraction once (Meltano)
+4) [EXT] Run extraction once (Meltano)
 
 ```bash
 cd extraction
 ./scripts/setup-local.sh
 source venv/bin/activate
 set -a; source ../.env; set +a
-meltano --environment=prod run tap-rest-rickandmorty target-bigquery
+meltano --environment=prod run tap-github-metabase target-bigquery
 ```
 
 > [i] INFO: The script creates the venv and installs dependencies. When it finishes, activate the venv in your shell to run Meltano.
-> [!] WARNING: dbt sources point to the `prod_tap_rest_rickandmorty` dataset. That is why the first Meltano run must load into prod.
+> [!] WARNING: dbt sources point to the `prod_tap_github_metabase` dataset. That is why the first Meltano run must load into prod.
 
-4) [DBT] Run transform and build models
+5) [DBT] Run transform and build models
 
 ```bash
 cd ../transform
@@ -76,15 +89,15 @@ dbt build --target prod
 > [i] INFO: `dbt build` runs models and tests, so it is used in PR/deploy.
 > [i] INFO: Every time you change a model, run `dbt build` again (or a selective build).
 
-5) [SQL] See results in the DB
+6) [SQL] See results in the DB
 
 ```sql
-select * from marts.character_status limit 10;
-select * from marts.episode_summary limit 10;
-select * from marts.location_summary limit 10;
+select * from marts.github_commits limit 10;
+select * from marts.github_committers limit 10;
+select commit_type, count(*) from marts.github_commits group by commit_type;
 ```
 
-6) [DOCS] Generate dbt docs (optional)
+7) [DOCS] Generate dbt docs (optional)
 
 ```bash
 cd ../transform
@@ -107,9 +120,9 @@ Opens at: http://localhost:8080
 ### Data flow
 
 ```
-Rick & Morty API
-  -> Meltano (tap-rest-rickandmorty + target-bigquery)
-  -> BigQuery: dataset prod_tap_rest_rickandmorty (raw)
+GitHub API
+  -> Meltano (tap-github-metabase + target-bigquery)
+  -> BigQuery: dataset prod_tap_github_metabase (raw)
   -> dbt staging: dataset stg (stg_*)
   -> dbt marts: dataset marts (final models)
 ```
@@ -120,33 +133,35 @@ Rick & Morty API
 - Marts are final models ready for analysis or BI.
 
 Real example from this project:
-- `stg_characters` -> `character_status`
+- `stg_github_commits` -> `github_commits`
 
 ### Table of models and key columns
 
 All column documentation lives in:
-- `transform/models/staging/schema.yml`
+- `transform/models/staging/*.yml`
 - `transform/models/production/marts/*.yml`
 
 ### Useful query examples
 
 ```sql
--- Top 5 episodes with most characters
-select episode_code, name, character_count
-from marts.episode_summary
-order by character_count desc
+-- Top 5 repos by commit volume
+select full_repo_name, count(*) as commit_count
+from marts.github_commits
+group by full_repo_name
+order by commit_count desc
 limit 5;
 
--- Top 5 locations with most residents
-select name, location_type, resident_count
-from marts.location_summary
-order by resident_count desc
-limit 5;
+-- Commit types distribution
+select commit_type, count(*) as commit_count
+from marts.github_commits
+group by commit_type
+order by commit_count desc;
 
--- Character distribution by status
-select status, character_count
-from marts.character_status
-order by character_count desc;
+-- Most active committers (last 90 days)
+select github_login, commits_last_90_days
+from marts.github_committers
+order by commits_last_90_days desc
+limit 10;
 ```
 
 ### Environments (dev, ci, prod)
@@ -168,7 +183,7 @@ If you do not pass `--target prod`, dbt uses the default target (dev).
 ### Modeling conventions
 
 - Staging always uses the `stg_` prefix.
-- Marts have no prefix (e.g. `character_status`).
+- Marts have no prefix (e.g. `github_commits`).
 - Each production model has its own `.yml` file with columns and tests.
 - Use `ref()` for dependencies between models.
 
@@ -184,7 +199,7 @@ export DBT_PROFILES_DIR=.
 dbt build
 ```
 
-> [i] INFO: Raw data stays in `prod_tap_rest_rickandmorty`, but your models are created in `SANDBOX_<DBT_USER>`.
+> [i] INFO: Raw data stays in `prod_tap_github_metabase`, but your models are created in `SANDBOX_<DBT_USER>`.
 > [i] INFO: If you modify models or YAML, run `dbt build` again.
 
 ### Add a new model
@@ -200,7 +215,7 @@ dbt build --select <nombre_del_modelo>
 ### Change the data source
 
 1) Edit `extraction/meltano.yml` to point to your new extractor.
-2) Update `transform/models/staging/_sources.yml` with the new dataset and tables.
+2) Update `transform/models/staging/source_github.yml` with the new dataset and tables.
 3) Rewrite the staging models to map the new columns.
 
 ## Quick repo layout
@@ -279,10 +294,10 @@ set -a; source ../.env; set +a
 
 Error: Source dataset not found
 
-Run extraction in prod (because sources point to `prod_tap_rest_rickandmorty`):
+Run extraction in prod (because sources point to `prod_tap_github_metabase`):
 
 ```bash
-meltano --environment=prod run tap-rest-rickandmorty target-bigquery
+meltano --environment=prod run tap-github-metabase target-bigquery
 ```
 
 Error: Required key is missing from config (Meltano)
