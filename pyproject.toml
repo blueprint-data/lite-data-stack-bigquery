@@ -1,0 +1,30 @@
+[project]
+name = "lite-data-stack-postgres-data-stack"
+version = "1.0.0"
+description = "Data extraction and transformation pipeline for lite-data-stack-postgres"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+extraction = [
+    "meltano>=4.0.0",
+]
+transform = [
+    "dbt-core>=1.9.0",
+    "dbt-postgres>=1.9.0",
+    "sqlfluff>=3.0.0",
+    "sqlfluff-templater-dbt>=3.0.0",
+]
+all = [
+    "lite-data-stack-postgres-data-stack[extraction,transform]",
+]
+dev = [
+    "lite-data-stack-postgres-data-stack[all]",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = []

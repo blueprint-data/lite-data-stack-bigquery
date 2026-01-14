@@ -1,0 +1,15 @@
+{
+  "editor.formatOnSave": true,
+  "python.formatting.provider": "black",
+  "python.linting.enabled": true,
+  "python.linting.flake8Enabled": true,
+  "sqlfluff.format.enabled": true,
+  "sqlfluff.executablePath": "${workspaceFolder}/transform/venv/bin/sqlfluff",
+  "sqlfluff.config": "${workspaceFolder}/.sqlfluff",
+  "sqlfluff.dialect": "postgres",
+  "sqlfluff.linter.run": "onSave",
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/.meltano": true
+  }
+}

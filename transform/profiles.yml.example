@@ -1,0 +1,37 @@
+lite_data_stack_postgres:
+
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('DB_HOST') }}"
+      port: "{{ env_var('DB_PORT') | int }}"
+      user: "{{ env_var('DB_USER') }}"
+      password: "{{ env_var('DB_PASSWORD') }}"
+      dbname: "{{ env_var('DB_NAME') }}"
+      schema: analytics
+      sslmode: "{{ env_var('DB_SSLMODE', 'require') }}"
+      threads: 4
+
+    ci:
+      type: postgres
+      host: "{{ env_var('DB_HOST') }}"
+      port: "{{ env_var('DB_PORT') | int }}"
+      user: "{{ env_var('DB_USER') }}"
+      password: "{{ env_var('DB_PASSWORD') }}"
+      dbname: "{{ env_var('DB_NAME') }}"
+      schema: analytics_ci
+      sslmode: "{{ env_var('DB_SSLMODE', 'require') }}"
+      threads: 4
+
+    prod:
+      type: postgres
+      host: "{{ env_var('DB_HOST') }}"
+      port: "{{ env_var('DB_PORT') | int }}"
+      user: "{{ env_var('DB_USER') }}"
+      password: "{{ env_var('DB_PASSWORD') }}"
+      dbname: "{{ env_var('DB_NAME') }}"
+      schema: analytics
+      sslmode: "{{ env_var('DB_SSLMODE', 'require') }}"
+      threads: 4
+
+  target: dev

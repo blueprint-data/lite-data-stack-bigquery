@@ -1,0 +1,12 @@
+version: 2
+
+models:
+  - name: character_status
+    description: Character counts by status for quick health checks.
+    columns:
+      - name: status
+        description: Character status value with missing values labeled as unknown.
+        tests:
+          - not_null
+      - name: character_count
+        description: Number of characters for each status.

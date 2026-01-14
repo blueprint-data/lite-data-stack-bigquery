@@ -1,0 +1,125 @@
+name: dbt-pr-ci
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches:
+      - main
+
+jobs:
+  dbt-pr-check:
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      DB_HOST: ${{ secrets.DB_HOST }}
+      DB_PORT: ${{ secrets.DB_PORT }}
+      DB_NAME: ${{ secrets.DB_NAME }}
+      DB_USER: ${{ secrets.DB_USER }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      DB_SSLMODE: ${{ secrets.DB_SSLMODE }}
+      DBT_USER: ci_pr_${{ github.event.pull_request.number }}
+      CI: true
+      DBT_CI_PR_NUMBER: ${{ github.event.pull_request.number }}
+      DBT_MANIFEST_URL: ${{ secrets.DBT_MANIFEST_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip uv
+          uv pip install --system -e ".[transform]"
+
+      - name: Prepare dbt profiles
+        run: |
+          cp transform/profiles.yml.example transform/profiles.yml
+
+      - name: Install dbt packages
+        working-directory: transform
+        env:
+          DBT_PROFILES_DIR: ${{ github.workspace }}/transform
+        run: |
+          dbt deps
+
+      - name: Detect changed SQL models
+        id: changed_sql
+        run: |
+          git fetch origin "${{ github.base_ref }}" --depth=1
+          if command -v rg >/dev/null 2>&1; then
+            files=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" | rg '^transform/models/.*\.sql$' || true)
+          else
+            files=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" | grep -E '^transform/models/.*\.sql$' || true)
+          fi
+          if [ -z "$files" ]; then
+            echo "files=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          {
+            echo "files<<EOF"
+            echo "$files"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Lint modified models with SQLFluff
+        if: steps.changed_sql.outputs.files != ''
+        env:
+          DBT_PROFILES_DIR: ${{ github.workspace }}/transform
+        run: |
+          echo "${{ steps.changed_sql.outputs.files }}" | xargs -d '\n' sqlfluff lint
+
+      - name: Download production manifest
+        run: |
+          mkdir -p transform/prod-artifacts
+          MANIFEST_URL="${DBT_MANIFEST_URL:-https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/manifest.json}"
+          if curl -fL "$MANIFEST_URL" -o transform/prod-artifacts/manifest.json; then
+            echo "Downloaded manifest from $MANIFEST_URL"
+          else
+            echo "No manifest found at $MANIFEST_URL; running full build."
+          fi
+
+      - name: Run dbt build in sandbox
+        working-directory: transform
+        env:
+          DBT_PROFILES_DIR: ${{ github.workspace }}/transform
+        run: |
+          if [ -f prod-artifacts/manifest.json ]; then
+            dbt build --target dev --select state:modified+ --defer --state prod-artifacts --fail-fast
+          else
+            dbt build --target dev --fail-fast
+          fi
+
+  cleanup-sandbox:
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      DB_HOST: ${{ secrets.DB_HOST }}
+      DB_PORT: ${{ secrets.DB_PORT }}
+      DB_NAME: ${{ secrets.DB_NAME }}
+      DB_USER: ${{ secrets.DB_USER }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      DB_SSLMODE: ${{ secrets.DB_SSLMODE }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    steps:
+      - name: Install psql
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Drop sandbox schema
+        env:
+          PGPASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          SCHEMA="sandbox_ci_pr_${PR_NUMBER}"
+          psql "host=${DB_HOST} port=${DB_PORT} dbname=${DB_NAME} user=${DB_USER} sslmode=${DB_SSLMODE}" \
+            -c "DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE;"

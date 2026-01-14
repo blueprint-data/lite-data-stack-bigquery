@@ -1,0 +1,35 @@
+name: 'lite_data_stack_postgres'
+version: '1.0.0'
+config-version: 2
+
+profile: 'lite_data_stack_postgres'
+
+model-paths: ['models']
+analysis-paths: ['analyses']
+test-paths: ['tests']
+seed-paths: ['seeds']
+macro-paths: ['macros']
+snapshot-paths: ['snapshots']
+
+clean-targets:
+  - 'target'
+  - 'dbt_packages'
+
+# Hooks to run before/after dbt commands
+on-run-start:
+  - >
+    {% if target.name == 'dev' and env_var('DBT_USER', '') == '' %}
+      {{ exceptions.raise_compiler_error('DBT_USER environment variable not set. Set it with: export DBT_USER="yourname"') }}
+    {% endif %}
+
+models:
+  lite_data_stack_postgres:
+    +persist_docs:
+      relation: true
+      columns: true
+    production:
+      marts:
+        +schema: marts
+    staging:
+      +schema: stg
+      +materialized: view

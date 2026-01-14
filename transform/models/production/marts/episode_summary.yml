@@ -1,0 +1,19 @@
+version: 2
+
+models:
+  - name: episode_summary
+    description: Episode attributes with character counts.
+    columns:
+      - name: episode_id
+        description: Episode identifier from the API.
+        tests:
+          - not_null
+          - unique
+      - name: episode_code
+        description: Episode code from the API (e.g. S01E01).
+      - name: name
+        description: Episode name.
+      - name: air_date
+        description: Air date string from the API.
+      - name: character_count
+        description: Number of characters in the episode.

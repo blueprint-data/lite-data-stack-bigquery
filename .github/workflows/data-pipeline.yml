@@ -1,0 +1,60 @@
+name: data-pipeline
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * *'
+
+jobs:
+  run-end-to-end:
+    runs-on: ubuntu-latest
+    env:
+      DB_HOST: ${{ secrets.DB_HOST }}
+      DB_PORT: ${{ secrets.DB_PORT }}
+      DB_NAME: ${{ secrets.DB_NAME }}
+      DB_USER: ${{ secrets.DB_USER }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      DBT_USER: ${{ secrets.DBT_USER }}
+      DB_SSLMODE: ${{ secrets.DB_SSLMODE }}
+      TARGET_POSTGRES_HOST: ${{ secrets.DB_HOST }}
+      TARGET_POSTGRES_PORT: ${{ secrets.DB_PORT }}
+      TARGET_POSTGRES_DATABASE: ${{ secrets.DB_NAME }}
+      TARGET_POSTGRES_USER: ${{ secrets.DB_USER }}
+      TARGET_POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      CI: true
+      DBT_CI_PR_NUMBER: scheduled
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip uv
+          uv pip install --system -e ".[extraction,transform]"
+
+      - name: Install Meltano plugins
+        working-directory: extraction
+        run: |
+          meltano install
+
+      - name: Run extraction
+        working-directory: extraction
+        run: |
+          meltano --environment=prod run tap-rest-rickandmorty target-postgres
+
+      - name: Prepare dbt profiles
+        run: |
+          cp transform/profiles.yml.example transform/profiles.yml
+
+      - name: Run dbt models
+        working-directory: transform
+        env:
+          DBT_PROFILES_DIR: ${{ github.workspace }}/transform
+        run: |
+          dbt deps
+          dbt run --target prod

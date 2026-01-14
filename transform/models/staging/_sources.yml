@@ -1,0 +1,12 @@
+version: 2
+
+sources:
+  - name: rick_and_morty
+    schema: prod_tap_rest_rickandmorty
+    tables:
+      - name: characters
+        description: Raw character records from the Rick and Morty API.
+      - name: episodes
+        description: Raw episode records from the Rick and Morty API.
+      - name: locations
+        description: Raw location records from the Rick and Morty API.

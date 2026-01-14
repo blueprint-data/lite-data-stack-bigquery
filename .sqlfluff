@@ -1,0 +1,38 @@
+[sqlfluff]
+
+dialect = postgres
+templater = jinja
+sql_file_exts = .sql
+output_line_length = 80
+max_line_length = 110
+exclude = transform/dbt_packages,transform/target,transform/logs
+
+[sqlfluff:indentation]
+tab_space_size = 4
+indented_joins = false
+indented_using_on = true
+template_blocks_indent = true
+indent_unit = space
+
+[sqlfluff:rules:capitalisation.keywords]
+# Obliga a que las palabras clave (SELECT, FROM) sean mayusculas
+capitalisation_policy = upper
+
+[sqlfluff:rules:layout.long_lines]
+ignore_comment_lines = true
+ignore_comment_clauses = true
+
+[sqlfluff:rules:references.keywords]
+ignore_words = network,users,url,date
+
+[sqlfluff:templater:jinja]
+apply_dbt_builtins = True
+load_macros_from_path = transform/macros
+
+[sqlfluff:templater:jinja:macros]
+# Macros de DBT para que el linter no se rompa al ver codigo Jinja
+dbt_ref = {% macro ref(model_ref) %}{{model_ref}}{% endmacro %}
+dbt_source = {% macro source(source_name, table) %}{{source_name}}_{{table}}{% endmacro %}
+dbt_config = {% macro config() %}{% for k in kwargs %}{% endfor %}{% endmacro %}
+dbt_var = {% macro var(variable, default='') %}item{% endmacro %}
+dbt_is_incremental = {% macro is_incremental() %}True{% endmacro %}

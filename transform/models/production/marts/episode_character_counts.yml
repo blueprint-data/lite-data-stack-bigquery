@@ -1,0 +1,17 @@
+version: 2
+
+models:
+  - name: episode_character_counts
+    description: Episode character counts for quick lookups.
+    columns:
+      - name: episode_id
+        description: Episode identifier from the API.
+        tests:
+          - not_null
+          - unique
+      - name: episode_code
+        description: Episode code from the API (e.g. S01E01).
+      - name: character_count
+        description: Number of characters in the episode.
+      - name: created_at
+        description: Episode record creation timestamp from the API.

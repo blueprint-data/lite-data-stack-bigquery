@@ -1,0 +1,19 @@
+version: 2
+
+models:
+  - name: location_summary
+    description: Location attributes with resident counts.
+    columns:
+      - name: location_id
+        description: Location identifier from the API.
+        tests:
+          - not_null
+          - unique
+      - name: name
+        description: Location name.
+      - name: location_type
+        description: Location type label from the API.
+      - name: dimension
+        description: Location dimension from the API.
+      - name: resident_count
+        description: Number of residents in the location.
