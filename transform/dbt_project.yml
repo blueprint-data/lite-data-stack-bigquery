@@ -1,8 +1,8 @@
-name: 'lite_data_stack_postgres'
+name: 'lite_data_stack_bigquery'
 version: '1.0.0'
 config-version: 2
 
-profile: 'lite_data_stack_postgres'
+profile: 'lite_data_stack_bigquery'
 
 model-paths: ['models']
 analysis-paths: ['analyses']
@@ -23,7 +23,7 @@ on-run-start:
     {% endif %}
 
 models:
-  lite_data_stack_postgres:
+  lite_data_stack_bigquery:
     +persist_docs:
       relation: true
       columns: true

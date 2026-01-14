@@ -1,7 +1,7 @@
 [project]
-name = "lite-data-stack-postgres-data-stack"
+name = "lite-data-stack-bigquery-data-stack"
 version = "1.0.0"
-description = "Data extraction and transformation pipeline for lite-data-stack-postgres"
+description = "Data extraction and transformation pipeline for lite-data-stack-bigquery"
 requires-python = ">=3.11"
 dependencies = []
 
@@ -11,15 +11,15 @@ extraction = [
 ]
 transform = [
     "dbt-core>=1.9.0",
-    "dbt-postgres>=1.9.0",
+    "dbt-bigquery>=1.9.0",
     "sqlfluff>=3.0.0",
     "sqlfluff-templater-dbt>=3.0.0",
 ]
 all = [
-    "lite-data-stack-postgres-data-stack[extraction,transform]",
+    "lite-data-stack-bigquery-data-stack[extraction,transform]",
 ]
 dev = [
-    "lite-data-stack-postgres-data-stack[all]",
+    "lite-data-stack-bigquery-data-stack[all]",
 ]
 
 [build-system]

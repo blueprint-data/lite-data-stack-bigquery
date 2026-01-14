@@ -1,14 +1,14 @@
-# lite-data-stack-postgres
+# lite-data-stack-bigquery
 
 ## What is this?
 
-This template creates a simple data pipeline: it extracts data from a public API (Rick & Morty), stores it in PostgreSQL, and then transforms it into ready-to-use tables. You do not need to know Meltano or dbt to use it; the README guides you step by step.
+This template creates a simple data pipeline: it extracts data from a public API (Rick & Morty), stores it in BigQuery, and then transforms it into ready-to-use tables. You do not need to know Meltano or dbt to use it; the README guides you step by step.
 
 It is aimed at small teams or projects starting their first stack: quick to spin up, easy to understand, and with CI/CD ready to automate tests and documentation.
 
 ## What it includes
 
-- Extraction with Meltano (API -> Postgres)
+- Extraction with Meltano (API -> BigQuery)
 - Transformation with dbt (staging -> marts)
 - Models and columns documented in YAML
 - CI/CD workflows and dbt docs on GitHub Pages
@@ -18,11 +18,12 @@ It is aimed at small teams or projects starting their first stack: quick to spin
 Minimum requirements:
 - [req] Python 3.11+
 - [req] Git
-- [req] A Postgres database (local or Supabase)
+- [req] A Google Cloud project with BigQuery enabled
+- [req] A BigQuery dataset and a service account JSON key
 
-1) [DB] Get a database
+1) [DB] Create a BigQuery dataset
 
-If you use local Postgres, create an empty database. If you use Supabase, get the connection details from Settings -> Database.
+Create a dataset in your GCP project and a service account with BigQuery permissions. Download the JSON key file.
 
 2) [CFG] Configure variables
 
@@ -34,34 +35,17 @@ cp .env.example .env
 Edit `.env` with your credentials. Minimal example:
 
 ```bash
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=lite_data_stack
-DB_USER=postgres
-DB_PASSWORD=postgres
-DB_SSLMODE=require
+BIGQUERY_PROJECT_ID=your-gcp-project
+BIGQUERY_DATASET_ID=analytics
+BIGQUERY_LOCATION=US
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
 
 DBT_USER=local
 
-TARGET_POSTGRES_HOST=localhost
-TARGET_POSTGRES_PORT=5432
-TARGET_POSTGRES_DATABASE=lite_data_stack
-TARGET_POSTGRES_USER=postgres
-TARGET_POSTGRES_PASSWORD=postgres
+TAP_GITHUB_AUTH_TOKEN=ghp_xxx
 ```
 
-> [!] WARNING: dbt uses `DB_*` and Meltano uses `TARGET_POSTGRES_*`. For the first run, point both to the same Postgres.
-
-Quick Supabase example (pooler):
-
-```bash
-DB_HOST=aws-1-us-east-1.pooler.supabase.com
-DB_PORT=6543
-DB_NAME=postgres
-DB_USER=postgres.<project-ref>
-DB_PASSWORD=tu_password
-DB_SSLMODE=require
-```
+> [!] WARNING: dbt and Meltano should point to the same BigQuery project/dataset for the first run.
 
 3) [EXT] Run extraction once (Meltano)
 
@@ -70,11 +54,11 @@ cd extraction
 ./scripts/setup-local.sh
 source venv/bin/activate
 set -a; source ../.env; set +a
-meltano --environment=prod run tap-rest-rickandmorty target-postgres
+meltano --environment=prod run tap-rest-rickandmorty target-bigquery
 ```
 
 > [i] INFO: The script creates the venv and installs dependencies. When it finishes, activate the venv in your shell to run Meltano.
-> [!] WARNING: dbt sources point to the `prod_tap_rest_rickandmorty` schema. That is why the first Meltano run must load into prod.
+> [!] WARNING: dbt sources point to the `prod_tap_rest_rickandmorty` dataset. That is why the first Meltano run must load into prod.
 
 4) [DBT] Run transform and build models
 
@@ -124,10 +108,10 @@ Opens at: http://localhost:8080
 
 ```
 Rick & Morty API
-  -> Meltano (tap-rest-rickandmorty + target-postgres)
-  -> Postgres: schema prod_tap_rest_rickandmorty (raw)
-  -> dbt staging: schema stg (stg_*)
-  -> dbt marts: schema marts (final models)
+  -> Meltano (tap-rest-rickandmorty + target-bigquery)
+  -> BigQuery: dataset prod_tap_rest_rickandmorty (raw)
+  -> dbt staging: dataset stg (stg_*)
+  -> dbt marts: dataset marts (final models)
 ```
 
 ### Staging vs marts
@@ -168,8 +152,8 @@ order by character_count desc;
 ### Environments (dev, ci, prod)
 
 - dev: default target. Writes to `SANDBOX_<DBT_USER>`. Ideal for local development.
-- ci: optional target with fixed schema `analytics_ci` if you need it in your own pipelines.
-- prod: writes to `stg` and `marts` schemas. Used for deploy and docs.
+- ci: optional target with fixed dataset `analytics_ci` if you need it in your own pipelines.
+- prod: writes to `stg` and `marts` datasets. Used for deploy and docs.
 
 If you do not pass `--target prod`, dbt uses the default target (dev).
 
@@ -216,7 +200,7 @@ dbt build --select <nombre_del_modelo>
 ### Change the data source
 
 1) Edit `extraction/meltano.yml` to point to your new extractor.
-2) Update `transform/models/staging/_sources.yml` with the new schema and tables.
+2) Update `transform/models/staging/_sources.yml` with the new dataset and tables.
 3) Rewrite the staging models to map the new columns.
 
 ## Quick repo layout
@@ -232,13 +216,12 @@ dbt build --select <nombre_del_modelo>
 ### Required GitHub secrets
 
 Configure these secrets in your repo:
-- `DB_HOST`
-- `DB_PORT`
-- `DB_NAME`
-- `DB_USER`
-- `DB_PASSWORD`
-- `DB_SSLMODE`
-- `DBT_USER` (for sandbox schemas)
+- `BIGQUERY_PROJECT_ID`
+- `BIGQUERY_DATASET_ID`
+- `BIGQUERY_LOCATION`
+- `GOOGLE_APPLICATION_CREDENTIALS`
+- `DBT_USER` (for sandbox datasets)
+- `TAP_GITHUB_AUTH_TOKEN`
 
 Optional:
 - `DBT_MANIFEST_URL` for custom slim CI
@@ -276,7 +259,7 @@ In PR, only modified SQL models are linted.
 <details>
 <summary>Common troubleshooting</summary>
 
-Error: Env var required but not provided: DB_HOST
+Error: Env var required but not provided: BIGQUERY_PROJECT_ID
 
 ```bash
 set -a; source .env; set +a
@@ -294,17 +277,17 @@ Error: source: no such file or directory: .env
 set -a; source ../.env; set +a
 ```
 
-Error: Source schema not found
+Error: Source dataset not found
 
 Run extraction in prod (because sources point to `prod_tap_rest_rickandmorty`):
 
 ```bash
-meltano --environment=prod run tap-rest-rickandmorty target-postgres
+meltano --environment=prod run tap-rest-rickandmorty target-bigquery
 ```
 
 Error: Required key is missing from config (Meltano)
 
-Make sure `TARGET_POSTGRES_*` are set in `.env` and reload:
+Make sure `BIGQUERY_*` and `GOOGLE_APPLICATION_CREDENTIALS` are set in `.env` and reload:
 
 ```bash
 set -a; source .env; set +a
@@ -322,7 +305,7 @@ export DBT_USER=tu_usuario
 <summary>Template customization</summary>
 
 - For another API: replace the tap in `extraction/meltano.yml`.
-- For another database: adjust `TARGET_POSTGRES_*` and `DB_*` in `.env`.
+- For another database: adjust `BIGQUERY_*` and `GOOGLE_APPLICATION_CREDENTIALS` in `.env`.
 - For new models: add SQL in `transform/models/production/marts` and its YAML next to it.
 
 </details>

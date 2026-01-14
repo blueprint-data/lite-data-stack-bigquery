@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "🚀 Setting up lite-data-stack-postgres dbt local development environment"
+echo "🚀 Setting up lite-data-stack-bigquery dbt local development environment"
 
 # Function to check Python version
 check_python_version() {

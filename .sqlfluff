@@ -1,6 +1,6 @@
 [sqlfluff]
 
-dialect = postgres
+dialect = bigquery
 templater = jinja
 sql_file_exts = .sql
 output_line_length = 80
