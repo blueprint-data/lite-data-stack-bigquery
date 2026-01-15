@@ -1,0 +1,60 @@
+version: 2
+
+models:
+  - name: github_repositories
+    description: |
+      Mart model containing repository-level metadata from GitHub.
+      One row per repository (repo_id), including visibility, default branch,
+      counts, timestamps, and owner info.
+    columns:
+      - name: repo_sk
+        description: Surrogate key for the repository.
+        tests:
+          - unique
+          - not_null
+
+      - name: repo_id
+        description: GitHub repository numeric id.
+        tests:
+          - unique
+          - not_null
+
+      - name: org
+        description: Organization/owner login (from tap payload).
+        tests:
+          - not_null
+
+      - name: repo
+        description: Repository name.
+        tests:
+          - not_null
+
+      - name: full_name
+        description: Full name in org/repo format as returned by GitHub.
+
+      - name: default_branch
+        description: Default branch name (e.g., main).
+
+      - name: visibility
+        description: Repository visibility (public/private/internal).
+
+      - name: is_private
+        description: True if repository is private.
+
+      - name: is_archived
+        description: True if repository is archived.
+
+      - name: created_at
+        description: Timestamp when repository was created.
+
+      - name: updated_at
+        description: Timestamp when repository metadata was last updated.
+
+      - name: pushed_at
+        description: Timestamp of last push activity.
+
+      - name: owner_login
+        description: Owner login (org/user).
+
+      - name: dbt_updated_at
+        description: Timestamp when the record was last updated by dbt.

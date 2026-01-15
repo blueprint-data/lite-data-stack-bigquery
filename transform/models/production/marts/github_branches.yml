@@ -1,0 +1,56 @@
+version: 2
+
+models:
+  - name: github_branches
+    description: |
+      Mart model for GitHub branches. One row per branch (org/repo/repo_id/branch_name),
+      includes protection flag and the current head commit SHA.
+    columns:
+      - name: branch_sk
+        description: Surrogate key for the branch (org/repo/repo_id/branch_name).
+        tests:
+          - unique
+          - not_null
+
+      - name: org
+        description: GitHub organization.
+        tests:
+          - not_null
+
+      - name: repo
+        description: GitHub repository name.
+        tests:
+          - not_null
+
+      - name: repo_id
+        description: GitHub repository numeric id.
+        tests:
+          - not_null
+
+      - name: full_repo_name
+        description: Repository in org/repo format.
+
+      - name: branch_name
+        description: Branch name.
+        tests:
+          - not_null
+
+      - name: is_protected
+        description: Whether the branch is protected.
+
+      - name: commit_sha
+        description: Head commit SHA for the branch.
+        tests:
+          - not_null
+
+      - name: commit_api_url
+        description: API URL of the head commit.
+
+      - name: is_main_branch
+        description: True if branch_name is main.
+
+      - name: _sdc_extracted_at
+        description: Timestamp when Stitch/Singer extracted the record.
+
+      - name: dbt_updated_at
+        description: Timestamp when the record was last updated by dbt.

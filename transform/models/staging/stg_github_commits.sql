@@ -6,7 +6,7 @@
 
 WITH source_data AS (
     SELECT s.*
-    FROM {{ source('metabase_github', 'commits') }} AS s
+    FROM {{ source('tap_github', 'commits') }} AS s
     {% if is_incremental() %}
         WHERE s._sdc_extracted_at > (
             SELECT MAX(t._sdc_extracted_at)
@@ -15,35 +15,73 @@ WITH source_data AS (
     {% endif %}
 ),
 
+parsed_source AS (
+    SELECT
+        -- Stitch metadata
+        s._sdc_extracted_at,
+        s._sdc_received_at,
+        s._sdc_batched_at,
+        s._sdc_deleted_at,
+        s._sdc_sequence,
+        s._sdc_table_version,
+
+        -- Raw JSON
+        s.data AS data_json,
+
+        -- Common identifiers
+        JSON_VALUE(s.data, '$.sha') AS sha,
+        SAFE.PARSE_TIMESTAMP(
+            '%Y-%m-%dT%H:%M:%E*S%Ez',
+            JSON_VALUE(s.data, '$.commit_timestamp')
+        ) AS commit_timestamp
+    FROM source_data AS s
+),
+
+deduped_source AS (
+    SELECT *
+    FROM (
+        SELECT
+            sd.*,
+            ROW_NUMBER() OVER (
+                PARTITION BY sd.sha
+                ORDER BY
+                    sd.commit_timestamp DESC,
+                    sd._sdc_extracted_at DESC
+            ) AS row_num
+        FROM parsed_source AS sd
+    )
+    WHERE row_num = 1
+),
+
 parsed_commits AS (
     SELECT
         -- Repo identifiers
-        sd.org,
-        sd.repo,
-        sd.repo_id,
-        sd.node_id,
-
-        -- Commit identifiers
         sd.sha,
-        sd.url AS commit_api_url,
-        sd.html_url AS commit_github_url,
-
-        -- Stitch metadata
         sd._sdc_extracted_at,
         sd._sdc_received_at,
         sd._sdc_batched_at,
+
+        -- Commit identifiers
         sd._sdc_deleted_at,
         sd._sdc_sequence,
         sd._sdc_table_version,
 
-        -- Normalize nested payloads to JSON strings (works whether original is STRUCT or already JSON-like)
-        TO_JSON_STRING(sd.commit) AS commit_json,
-        TO_JSON_STRING(sd.author) AS author_json,
-        TO_JSON_STRING(sd.committer) AS committer_json,
+        -- Stitch metadata
+        sd.commit_timestamp,
+        JSON_VALUE(sd.data_json, '$.org') AS org,
+        JSON_VALUE(sd.data_json, '$.repo') AS repo,
+        SAFE_CAST(JSON_VALUE(sd.data_json, '$.repo_id') AS INT64) AS repo_id,
+        JSON_VALUE(sd.data_json, '$.node_id') AS node_id,
+        JSON_VALUE(sd.data_json, '$.url') AS commit_api_url,
 
-        -- Commit timestamp (top-level from tap)
-        SAFE_CAST(sd.commit_timestamp AS TIMESTAMP) AS commit_timestamp
-    FROM source_data AS sd
+        -- Normalize nested payloads to JSON strings
+        JSON_VALUE(sd.data_json, '$.html_url') AS commit_github_url,
+        TO_JSON_STRING(JSON_QUERY(sd.data_json, '$.commit')) AS commit_json,
+        TO_JSON_STRING(JSON_QUERY(sd.data_json, '$.author')) AS author_json,
+
+        -- Top-level commit timestamp (tap)
+        TO_JSON_STRING(JSON_QUERY(sd.data_json, '$.committer')) AS committer_json
+    FROM deduped_source AS sd
 ),
 
 exploded_commits AS (
@@ -130,50 +168,58 @@ final AS (
         ec.commit_message,
         ec.comment_count,
 
-        -- PR number from message (safe raw string)
         ec.git_author_name,
-
-        -- Conventional commit classification
         ec.git_author_email,
-
-        -- Merge-ish heuristic (author != committer)
         ec.git_author_timestamp,
 
         ec.git_committer_name,
         ec.git_committer_email,
         ec.git_committer_timestamp,
+
         ec.tree_sha,
         ec.tree_url,
-        ec.is_verified,
 
+        ec.is_verified,
         ec.verification_reason,
         ec.verified_at,
 
         ec.github_author_id,
         ec.github_author_login,
         ec.github_author_avatar_url,
-
         ec.github_author_profile_url,
         ec.github_author_type,
         ec.github_author_is_site_admin,
+
         ec.github_committer_id,
         ec.github_committer_login,
         ec.github_committer_avatar_url,
-
         ec.github_committer_profile_url,
         ec.github_committer_type,
         ec.github_committer_is_site_admin,
+
         ec._sdc_extracted_at,
         ec._sdc_received_at,
         ec._sdc_batched_at,
-
         ec._sdc_deleted_at,
         ec._sdc_sequence,
         ec._sdc_table_version,
 
-        -- Derived fields
+        -- Derived (lightweight, ok for staging)
         SAFE_CAST(REGEXP_EXTRACT(ec.commit_message, '#([0-9]+)') AS INT64)
             AS pull_request_number,
+
+        DATE(ec.commit_timestamp) AS commit_date,
+        DATE_TRUNC(DATE(ec.commit_timestamp), WEEK (MONDAY)) AS commit_week,
+        DATE_TRUNC(DATE(ec.commit_timestamp), MONTH) AS commit_month,
+        DATE_TRUNC(DATE(ec.commit_timestamp), QUARTER) AS commit_quarter,
+        DATE_TRUNC(DATE(ec.commit_timestamp), YEAR) AS commit_year,
+        EXTRACT(DAYOFWEEK FROM ec.commit_timestamp) AS commit_day_of_week,
+        EXTRACT(HOUR FROM ec.commit_timestamp) AS commit_hour,
+        (
+            ec.git_author_email IS NOT NULL
+            AND ec.git_committer_email IS NOT NULL
+            AND ec.git_author_email != ec.git_committer_email
+        ) AS is_merge_commit,
         CASE
             WHEN REGEXP_CONTAINS(LOWER(ec.commit_message), '^feat(\\(|:)\\b') THEN 'feature'
             WHEN REGEXP_CONTAINS(LOWER(ec.commit_message), '^fix(\\(|:)\\b') THEN 'fix'
@@ -186,20 +232,7 @@ final AS (
             WHEN REGEXP_CONTAINS(LOWER(ec.commit_message), '^ci(\\(|:)\\b') THEN 'ci'
             WHEN REGEXP_CONTAINS(LOWER(ec.commit_message), '^build(\\(|:)\\b') THEN 'build'
             ELSE 'other'
-        END AS commit_type,
-        (
-            ec.git_author_email IS NOT NULL
-            AND ec.git_committer_email IS NOT NULL
-            AND ec.git_author_email != ec.git_committer_email
-        ) AS is_merge_commit,
-
-        DATE(ec.commit_timestamp) AS commit_date,
-        DATE_TRUNC(DATE(ec.commit_timestamp), WEEK (MONDAY)) AS commit_week,
-        DATE_TRUNC(DATE(ec.commit_timestamp), MONTH) AS commit_month,
-        DATE_TRUNC(DATE(ec.commit_timestamp), QUARTER) AS commit_quarter,
-        DATE_TRUNC(DATE(ec.commit_timestamp), YEAR) AS commit_year,
-        EXTRACT(DAYOFWEEK FROM ec.commit_timestamp) AS commit_day_of_week,
-        EXTRACT(HOUR FROM ec.commit_timestamp) AS commit_hour
+        END AS commit_type
     FROM exploded_commits AS ec
 )
 

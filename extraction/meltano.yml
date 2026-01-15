@@ -8,16 +8,19 @@ plugins:
     variant: meltanolabs
     pip_url: meltanolabs-tap-github
     config:
-      auth_token: ${TAP_GITHUB_AUTH_TOKEN}
-
-  - name: tap-github-metabase
-    inherit_from: tap-github
-    config:
+      auth_token: $TAP_GITHUB_AUTH_TOKEN
       repositories:
-      - metabase/metabase
+        - blueprint-data/lite-data-stack-postgres
+      start_date: "2026-01-01T00:00:00Z"
+      stream_options:
+        milestones:
+          state: open
     select:
+    - repositories.*
+    - branches.*
     - commits.*
-    - releases.*
+    - pull_request_commits.*
+
 
   loaders:
   - name: target-jsonl
@@ -31,8 +34,8 @@ plugins:
       dataset: ${MELTANO_ENVIRONMENT}_${MELTANO_EXTRACTOR_NAMESPACE}
       location: ${TARGET_BIGQUERY_LOCATION}
       credentials_path: ${TARGET_BIGQUERY_CREDENTIALS_PATH}
-      denormalized: false 
-      generate_view: true  
+      denormalized: false
+      generate_view: true
 
 environments:
 - name: dev

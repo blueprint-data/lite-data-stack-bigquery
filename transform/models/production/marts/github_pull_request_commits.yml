@@ -1,0 +1,63 @@
+version: 2
+
+models:
+  - name: github_pull_request_commits
+    description: |
+      Mart model for commits associated with pull requests (tap-github pull_request_commits stream).
+      One row per (org/repo/repo_id/pull_request_number/sha), including flattened commit details,
+      author/committer profiles, verification flags, and time dimensions.
+    columns:
+      - name: pull_request_commit_sk
+        description: Surrogate key for a PR commit (org/repo/repo_id/pull_request_number/sha).
+        tests:
+          - unique
+          - not_null
+
+      - name: org
+        description: GitHub organization.
+        tests:
+          - not_null
+
+      - name: repo
+        description: GitHub repository name.
+        tests:
+          - not_null
+
+      - name: repo_id
+        description: GitHub repository numeric id.
+        tests:
+          - not_null
+
+      - name: pull_request_number
+        description: Pull request number that this commit belongs to.
+        tests:
+          - not_null
+
+      - name: sha
+        description: Commit SHA.
+        tests:
+          - not_null
+
+      - name: commit_message
+        description: Commit message.
+
+      - name: commit_type
+        description: Conventional commit classification derived from commit_message.
+
+      - name: is_merge_commit
+        description: True if git author email differs from git committer email.
+
+      - name: git_author_timestamp
+        description: Commit author timestamp (parsed from commit payload).
+
+      - name: is_verified
+        description: True if GitHub verification indicates the commit is verified.
+
+      - name: commit_date
+        description: Date derived from git_author_timestamp.
+
+      - name: _sdc_extracted_at
+        description: Stitch extracted timestamp used for incremental loading.
+
+      - name: dbt_updated_at
+        description: Timestamp when the record was last updated by dbt.

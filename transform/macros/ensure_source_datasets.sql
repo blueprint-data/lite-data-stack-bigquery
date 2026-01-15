@@ -1,5 +1,5 @@
 {% macro ensure_source_datasets() -%}
-    {%- set source_datasets = [target.name ~ '_tap_github_metabase'] -%}
+    {%- set source_datasets = [target.name ~ '_tap_github'] -%}
     {%- set project = target.project -%}
     {%- set location = target.location if target.location is defined and target.location else 'US' -%}
 
