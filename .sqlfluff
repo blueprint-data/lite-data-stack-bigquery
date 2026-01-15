@@ -1,9 +1,7 @@
 [sqlfluff]
-
 dialect = bigquery
 templater = jinja
 sql_file_exts = .sql
-output_line_length = 80
 max_line_length = 110
 exclude = transform/dbt_packages,transform/target,transform/logs
 
@@ -15,7 +13,6 @@ template_blocks_indent = true
 indent_unit = space
 
 [sqlfluff:rules:capitalisation.keywords]
-# Obliga a que las palabras clave (SELECT, FROM) sean mayusculas
 capitalisation_policy = upper
 
 [sqlfluff:rules:layout.long_lines]
@@ -30,9 +27,14 @@ apply_dbt_builtins = True
 load_macros_from_path = transform/macros
 
 [sqlfluff:templater:jinja:macros]
-# Macros de DBT para que el linter no se rompa al ver codigo Jinja
-dbt_ref = {% macro ref(model_ref) %}{{model_ref}}{% endmacro %}
-dbt_source = {% macro source(source_name, table) %}{{source_name}}_{{table}}{% endmacro %}
+dbt_ref = {% macro ref(model_ref) %}{{ model_ref }}{% endmacro %}
+dbt_source = {% macro source(source_name, table) %}{{ source_name }}_{{ table }}{% endmacro %}
 dbt_config = {% macro config() %}{% for k in kwargs %}{% endfor %}{% endmacro %}
 dbt_var = {% macro var(variable, default='') %}item{% endmacro %}
 dbt_is_incremental = {% macro is_incremental() %}True{% endmacro %}
+
+[sqlfluff:lint]
+per-file-ignores =
+    transform/models/staging/*.sql:RF01,RF03,ST06
+    transform/models/intermediate/*.sql:RF01,RF03
+

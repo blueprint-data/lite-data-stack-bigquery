@@ -42,9 +42,6 @@ models:
       - name: commit_message
         description: The full commit message including title and body.
 
-      - name: comment_count
-        description: The number of comments on the commit.
-
       - name: pull_request_number
         description: The pull request number extracted from the commit message (e.g., #12345).
 
@@ -82,9 +79,6 @@ models:
       - name: verification_reason
         description: The reason for the verification status (e.g., 'valid', 'unsigned').
 
-      - name: verified_at
-        description: The timestamp when the commit was verified.
-
       - name: tree_sha
         description: The SHA of the git tree object for this commit.
 
@@ -100,8 +94,9 @@ models:
               arguments:
                 to: ref('github_committers')
                 field: committer_id
-        meta:
-          metabase.semantic_type: type/FK
+        config:
+          meta:
+            metabase.semantic_type: type/FK
 
       - name: github_author_login
         description: The GitHub username of the commit author.
@@ -156,18 +151,6 @@ models:
 
       - name: commit_hour
         description: The hour of day for the commit (0-23).
-
-      - name: _sdc_extracted_at
-        description: Stitch metadata - timestamp when data was extracted from the source.
-
-      - name: _sdc_received_at
-        description: Stitch metadata - timestamp when data was received by Stitch.
-
-      - name: _sdc_batched_at
-        description: Stitch metadata - timestamp when data was batched for loading.
-
-      - name: _sdc_sequence
-        description: Stitch metadata - sequence number for ordering records.
 
       - name: dbt_updated_at
         description: Timestamp when the record was last updated by dbt.

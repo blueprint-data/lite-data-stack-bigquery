@@ -8,7 +8,9 @@ WITH commits AS (
     SELECT stg.*
     FROM {{ ref('stg_github_commits') }} AS stg
     {% if is_incremental() %}
-        WHERE stg.commit_timestamp > (SELECT MAX(this.commit_timestamp) FROM {{ this }} AS this)
+        WHERE
+            stg.commit_timestamp
+            > (SELECT MAX(tgt.commit_timestamp) FROM {{ this }} AS tgt)
     {% endif %}
 )
 
@@ -29,7 +31,6 @@ SELECT
     commit_message,
 
     -- Commit Content
-    comment_count,
     pull_request_number,
     commit_type,
     git_author_name,
@@ -47,7 +48,6 @@ SELECT
     -- Commit Characteristics
     is_verified,
     verification_reason,
-    verified_at,
     tree_sha,
 
     -- Tree Information
@@ -68,22 +68,16 @@ SELECT
     github_committer_profile_url,
     github_committer_type,
     github_committer_is_site_admin,
-    commit_date,
 
-    -- Time Dimensions
+    -- Date dims
+    commit_date,
     commit_week,
     commit_month,
     commit_quarter,
     commit_year,
     commit_day_of_week,
     commit_hour,
-    _sdc_extracted_at,
 
-    -- Metadata
-    _sdc_received_at,
-    _sdc_batched_at,
-    _sdc_sequence,
     CONCAT(org, '/', repo) AS full_repo_name,
     CURRENT_TIMESTAMP() AS dbt_updated_at
-
 FROM commits

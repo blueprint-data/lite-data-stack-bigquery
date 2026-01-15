@@ -21,6 +21,7 @@ on-run-start:
     {% if target.name == 'dev' and env_var('DBT_USER', '') == '' %}
       {{ exceptions.raise_compiler_error('DBT_USER environment variable not set. Set it with: export DBT_USER="yourname"') }}
     {% endif %}
+  - "{{ ensure_source_datasets() }}"
 
 models:
   lite_data_stack_bigquery:
