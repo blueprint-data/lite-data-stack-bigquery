@@ -32,7 +32,8 @@ plugins:
       dataset: ${MELTANO_ENVIRONMENT}_${MELTANO_EXTRACTOR_NAMESPACE}
       location: ${TARGET_BIGQUERY_LOCATION}
       credentials_path: ${TARGET_BIGQUERY_CREDENTIALS_PATH}
-      denormalized: true
+      denormalized: false 
+      generate_view: true  
 
 environments:
 - name: dev
