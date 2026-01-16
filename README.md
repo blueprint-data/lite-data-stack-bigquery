@@ -287,8 +287,8 @@ The workflows in `.github/workflows` are configured for this BigQuery stack
 - `BIGQUERY_PROJECT_ID`
 - `BIGQUERY_DATASET_ID`
 - `BIGQUERY_LOCATION`
-- `DBT_GOOGLE_APPLICATION_CREDENTIALS`
-- `MELTANO_GOOGLE_APPLICATION_CREDENTIALS`
+- `DBT_GOOGLE_APPLICATION_CREDENTIALS` (base64-encoded JSON key)
+- `MELTANO_GOOGLE_APPLICATION_CREDENTIALS` (base64-encoded JSON key)
 - `DBT_USER` (for sandbox datasets)
 - `TAP_GITHUB_AUTH_TOKEN`
 
@@ -297,6 +297,12 @@ Optional:
 - `MELTANO_STATE_BACKEND_URI` if you want Meltano state in GCS
 - `TARGET_BIGQUERY_PROJECT` if different from `BIGQUERY_PROJECT_ID`
 - `TARGET_BIGQUERY_LOCATION` if different from `BIGQUERY_LOCATION`
+
+Encode the JSON key before saving to GitHub Secrets:
+
+```bash
+base64 -i /path/to/service-account.json | tr -d '\n'
+```
 
 ### Workflows
 
