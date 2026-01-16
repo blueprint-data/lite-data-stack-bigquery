@@ -11,7 +11,6 @@ plugins:
       auth_token: $TAP_GITHUB_AUTH_TOKEN
       repositories:
         - blueprint-data/lite-data-stack-postgres
-      start_date: "2026-01-01T00:00:00Z"
       stream_options:
         milestones:
           state: open
