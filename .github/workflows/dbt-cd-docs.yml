@@ -37,9 +37,9 @@ jobs:
           python -m pip install --upgrade pip uv
           uv pip install --system -e ".[transform]"
 
-      - name: Write GCP credentials
+      - name: Decode GCP credentials
         run: |
-          printf '%s' "${{ secrets.DBT_GOOGLE_APPLICATION_CREDENTIALS }}" > "${DBT_GOOGLE_APPLICATION_CREDENTIALS}"
+          printf '%s' "${{ secrets.DBT_GOOGLE_APPLICATION_CREDENTIALS }}" | base64 -d > "${DBT_GOOGLE_APPLICATION_CREDENTIALS}"
           chmod 600 "${DBT_GOOGLE_APPLICATION_CREDENTIALS}"
 
       - name: Prepare dbt profiles
@@ -86,9 +86,9 @@ jobs:
           python -m pip install --upgrade pip uv
           uv pip install --system -e ".[transform]"
 
-      - name: Write GCP credentials
+      - name: Decode GCP credentials
         run: |
-          printf '%s' "${{ secrets.DBT_GOOGLE_APPLICATION_CREDENTIALS }}" > "${DBT_GOOGLE_APPLICATION_CREDENTIALS}"
+          printf '%s' "${{ secrets.DBT_GOOGLE_APPLICATION_CREDENTIALS }}" | base64 -d > "${DBT_GOOGLE_APPLICATION_CREDENTIALS}"
           chmod 600 "${DBT_GOOGLE_APPLICATION_CREDENTIALS}"
 
       - name: Prepare dbt profiles
