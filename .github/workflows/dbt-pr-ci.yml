@@ -13,12 +13,10 @@ jobs:
     permissions:
       contents: read
     env:
-      DB_HOST: ${{ secrets.DB_HOST }}
-      DB_PORT: ${{ secrets.DB_PORT }}
-      DB_NAME: ${{ secrets.DB_NAME }}
-      DB_USER: ${{ secrets.DB_USER }}
-      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-      DB_SSLMODE: ${{ secrets.DB_SSLMODE }}
+      BIGQUERY_PROJECT_ID: ${{ secrets.BIGQUERY_PROJECT_ID }}
+      BIGQUERY_DATASET_ID: ${{ secrets.BIGQUERY_DATASET_ID }}
+      BIGQUERY_LOCATION: ${{ secrets.BIGQUERY_LOCATION }}
+      GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/gcp-service-account.json
       DBT_USER: ci_pr_${{ github.event.pull_request.number }}
       CI: true
       DBT_CI_PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -38,6 +36,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip uv
           uv pip install --system -e ".[transform]"
+
+      - name: Write GCP credentials
+        run: |
+          printf '%s' "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}" > "${GOOGLE_APPLICATION_CREDENTIALS}"
+          chmod 600 "${GOOGLE_APPLICATION_CREDENTIALS}"
 
       - name: Prepare dbt profiles
         run: |
@@ -103,23 +106,23 @@ jobs:
     permissions:
       contents: read
     env:
-      DB_HOST: ${{ secrets.DB_HOST }}
-      DB_PORT: ${{ secrets.DB_PORT }}
-      DB_NAME: ${{ secrets.DB_NAME }}
-      DB_USER: ${{ secrets.DB_USER }}
-      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-      DB_SSLMODE: ${{ secrets.DB_SSLMODE }}
+      BIGQUERY_PROJECT_ID: ${{ secrets.BIGQUERY_PROJECT_ID }}
+      BIGQUERY_DATASET_ID: ${{ secrets.BIGQUERY_DATASET_ID }}
+      BIGQUERY_LOCATION: ${{ secrets.BIGQUERY_LOCATION }}
+      GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/gcp-service-account.json
       PR_NUMBER: ${{ github.event.pull_request.number }}
     steps:
-      - name: Install psql
+      - name: Write GCP credentials
         run: |
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client
+          printf '%s' "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}" > "${GOOGLE_APPLICATION_CREDENTIALS}"
+          chmod 600 "${GOOGLE_APPLICATION_CREDENTIALS}"
 
-      - name: Drop sandbox schema
-        env:
-          PGPASSWORD: ${{ secrets.DB_PASSWORD }}
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.BIGQUERY_PROJECT_ID }}
+
+      - name: Drop sandbox dataset
         run: |
-          SCHEMA="sandbox_ci_pr_${PR_NUMBER}"
-          psql "host=${DB_HOST} port=${DB_PORT} dbname=${DB_NAME} user=${DB_USER} sslmode=${DB_SSLMODE}" \
-            -c "DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE;"
+          SANDBOX_DATASET="SANDBOX_CI_PR_${PR_NUMBER}"
+          bq --project_id="${BIGQUERY_PROJECT_ID}" rm -r -f -d "${BIGQUERY_PROJECT_ID}:${SANDBOX_DATASET}"

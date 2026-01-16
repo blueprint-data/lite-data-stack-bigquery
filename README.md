@@ -19,7 +19,9 @@ Minimum requirements:
 - [req] Python 3.11+
 - [req] Git
 - [req] A Google Cloud project with BigQuery enabled
-- [req] BigQuery datasets (raw/stg/marts) and a service account JSON key
+- [req] BigQuery datasets (raw/stg/marts)
+- [req] A service account JSON key
+- [req] A GCS bucket for Meltano state
 
 1) [GCP] Create a GCP project and service accounts
 
@@ -34,13 +36,29 @@ In IAM & Admin:
   (example: `meltano@data.iam.gserviceaccount.com`).
 - Assign the role `BigQuery Data Owner` (or the minimum you need for datasets/jobs).
 
-2) [DB] Create BigQuery datasets (or grant create permissions)
+2) [GCS] Create a GCS bucket for Meltano state
+
+In Cloud Storage -> Buckets:
+- Create a private bucket (example: `template-bigquery`).
+- Recommended settings:
+  - Public access prevention: Enabled
+  - Access control: Uniform
+  - Storage class: Standard
+  - Encryption: Google-managed
+
+Then in bucket permissions:
+- Add the Meltano service account (for example: `meltano@<project-id>.iam.gserviceaccount.com`).
+- Grant the role `Storage Object Admin`.
+
+This allows Meltano to create and manage state files.
+
+3) [DB] Create BigQuery datasets (or grant create permissions)
 
 You will need datasets for raw and modeled data:
 - Raw: `<env>_tap_github` (for example `prod_tap_github`)
 - Modeled: `stg` and `marts` (prod/ci). For dev, dbt uses `SANDBOX_<DBT_USER>`.
 
-3) [CFG] Configure variables
+4) [CFG] Configure variables
 
 ```bash
 cd PROJECT_NAME
@@ -53,11 +71,12 @@ Edit `.env` with your credentials. Minimal example:
 BIGQUERY_PROJECT_ID=your-gcp-project
 BIGQUERY_DATASET_ID=analytics
 BIGQUERY_LOCATION=US
-GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/dbt-service-account.json
+MELTANO_STATE_BACKEND_URI=gs://your-bucket/meltano/state
 
 TARGET_BIGQUERY_PROJECT=${BIGQUERY_PROJECT_ID}
 TARGET_BIGQUERY_LOCATION=${BIGQUERY_LOCATION}
-TARGET_BIGQUERY_CREDENTIALS_PATH=/path/to/service-account.json
+TARGET_BIGQUERY_CREDENTIALS_PATH=/path/to/meltano-service-account.json
 
 DBT_USER=local
 
@@ -68,21 +87,38 @@ TAP_GITHUB_AUTH_TOKEN=ghp_xxx
 > [!] WARNING: dbt sources read from `<target>_tap_github`. Run Meltano in the
 > same environment as the dbt target you plan to build.
 
-4) [EXT] Run extraction once (Meltano)
+5) [LOCAL] Set up the extraction environment
 
 ```bash
 cd extraction
 ./scripts/setup-local.sh
 source venv/bin/activate
+```
+
+This creates the venv, installs Meltano dependencies, and initializes the project.
+
+6) [TEST] Verify the state backend
+
+From `extraction/` with the venv active:
+
+```bash
+set -a; source ../.env; set +a
+meltano state list
+```
+
+Expected: no errors, and either an empty list or existing states.
+
+7) [EXT] Run extraction once (Meltano)
+
+```bash
 set -a; source ../.env; set +a
 meltano --environment=prod run tap-github target-bigquery
 ```
 
-> [i] INFO: The script creates the venv and installs dependencies. When it finishes, activate the venv in your shell to run Meltano.
 > [!] WARNING: dbt sources point to `<target>_tap_github` (for example `prod_tap_github`).
 > Run Meltano with the same environment as your dbt target.
 
-5) [DBT] Run transform and build models
+8) [DBT] Run transform and build models
 
 ```bash
 cd ../transform
@@ -98,7 +134,7 @@ dbt build --target prod
 > [i] INFO: `dbt build` runs models and tests, so it is used in PR/deploy.
 > [i] INFO: Every time you change a model, run `dbt build` again (or a selective build).
 
-6) [SQL] See results in the DB
+9) [SQL] See results in the DB
 
 ```sql
 select * from marts.github_commits limit 10;
@@ -106,7 +142,7 @@ select * from marts.github_committers limit 10;
 select commit_type, count(*) from marts.github_commits group by commit_type;
 ```
 
-7) [DOCS] Generate dbt docs (optional)
+10) [DOCS] Generate dbt docs (optional)
 
 ```bash
 cd ../transform
@@ -255,6 +291,7 @@ BigQuery stack (tap-github + target-bigquery) before enabling.
 
 Optional:
 - `DBT_MANIFEST_URL` for custom slim CI
+- `MELTANO_STATE_BACKEND_URI` if you want Meltano state in GCS
 
 ### Workflows
 
@@ -313,6 +350,21 @@ Run extraction in the same environment as your dbt target (prod example):
 
 ```bash
 meltano --environment=prod run tap-github target-bigquery
+```
+
+Need a full reload (clear Meltano state)
+
+If you want to reimport everything, clear the saved state first:
+
+```bash
+meltano --environment=prod state list
+meltano --environment=prod state clear prod:tap-github-to-target-bigquery --force
+```
+
+To clear all state IDs:
+
+```bash
+meltano --environment=prod state clear --all --force
 ```
 
 Error: Required key is missing from config (Meltano)

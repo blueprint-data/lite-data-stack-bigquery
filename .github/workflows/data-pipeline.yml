@@ -9,18 +9,16 @@ jobs:
   run-end-to-end:
     runs-on: ubuntu-latest
     env:
-      DB_HOST: ${{ secrets.DB_HOST }}
-      DB_PORT: ${{ secrets.DB_PORT }}
-      DB_NAME: ${{ secrets.DB_NAME }}
-      DB_USER: ${{ secrets.DB_USER }}
-      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      BIGQUERY_PROJECT_ID: ${{ secrets.BIGQUERY_PROJECT_ID }}
+      BIGQUERY_DATASET_ID: ${{ secrets.BIGQUERY_DATASET_ID }}
+      BIGQUERY_LOCATION: ${{ secrets.BIGQUERY_LOCATION }}
+      GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/gcp-service-account.json
+      MELTANO_STATE_BACKEND_URI: ${{ secrets.MELTANO_STATE_BACKEND_URI }}
+      TARGET_BIGQUERY_PROJECT: ${{ secrets.TARGET_BIGQUERY_PROJECT || secrets.BIGQUERY_PROJECT_ID }}
+      TARGET_BIGQUERY_LOCATION: ${{ secrets.TARGET_BIGQUERY_LOCATION || secrets.BIGQUERY_LOCATION }}
+      TARGET_BIGQUERY_CREDENTIALS_PATH: ${{ github.workspace }}/gcp-service-account.json
+      TAP_GITHUB_AUTH_TOKEN: ${{ secrets.TAP_GITHUB_AUTH_TOKEN }}
       DBT_USER: ${{ secrets.DBT_USER }}
-      DB_SSLMODE: ${{ secrets.DB_SSLMODE }}
-      TARGET_POSTGRES_HOST: ${{ secrets.DB_HOST }}
-      TARGET_POSTGRES_PORT: ${{ secrets.DB_PORT }}
-      TARGET_POSTGRES_DATABASE: ${{ secrets.DB_NAME }}
-      TARGET_POSTGRES_USER: ${{ secrets.DB_USER }}
-      TARGET_POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
       CI: true
       DBT_CI_PR_NUMBER: scheduled
     steps:
@@ -37,6 +35,11 @@ jobs:
           python -m pip install --upgrade pip uv
           uv pip install --system -e ".[extraction,transform]"
 
+      - name: Write GCP credentials
+        run: |
+          printf '%s' "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}" > "${GOOGLE_APPLICATION_CREDENTIALS}"
+          chmod 600 "${GOOGLE_APPLICATION_CREDENTIALS}"
+
       - name: Install Meltano plugins
         working-directory: extraction
         run: |
@@ -45,7 +48,7 @@ jobs:
       - name: Run extraction
         working-directory: extraction
         run: |
-          meltano --environment=prod run tap-rest-rickandmorty target-postgres
+          meltano --environment=prod run tap-github target-bigquery
 
       - name: Prepare dbt profiles
         run: |
@@ -57,4 +60,4 @@ jobs:
           DBT_PROFILES_DIR: ${{ github.workspace }}/transform
         run: |
           dbt deps
-          dbt run --target prod
+          dbt build --target prod
