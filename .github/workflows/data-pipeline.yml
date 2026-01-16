@@ -12,11 +12,13 @@ jobs:
       BIGQUERY_PROJECT_ID: ${{ secrets.BIGQUERY_PROJECT_ID }}
       BIGQUERY_DATASET_ID: ${{ secrets.BIGQUERY_DATASET_ID }}
       BIGQUERY_LOCATION: ${{ secrets.BIGQUERY_LOCATION }}
-      GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/gcp-service-account.json
+      DBT_GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/gcp-dbt-service-account.json
+      MELTANO_GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/gcp-meltano-service-account.json
+      GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/gcp-meltano-service-account.json
       MELTANO_STATE_BACKEND_URI: ${{ secrets.MELTANO_STATE_BACKEND_URI }}
       TARGET_BIGQUERY_PROJECT: ${{ secrets.TARGET_BIGQUERY_PROJECT || secrets.BIGQUERY_PROJECT_ID }}
       TARGET_BIGQUERY_LOCATION: ${{ secrets.TARGET_BIGQUERY_LOCATION || secrets.BIGQUERY_LOCATION }}
-      TARGET_BIGQUERY_CREDENTIALS_PATH: ${{ github.workspace }}/gcp-service-account.json
+      TARGET_BIGQUERY_CREDENTIALS_PATH: ${{ github.workspace }}/gcp-meltano-service-account.json
       TAP_GITHUB_AUTH_TOKEN: ${{ secrets.TAP_GITHUB_AUTH_TOKEN }}
       DBT_USER: ${{ secrets.DBT_USER }}
       CI: true
@@ -37,8 +39,9 @@ jobs:
 
       - name: Write GCP credentials
         run: |
-          printf '%s' "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}" > "${GOOGLE_APPLICATION_CREDENTIALS}"
-          chmod 600 "${GOOGLE_APPLICATION_CREDENTIALS}"
+          printf '%s' "${{ secrets.DBT_GOOGLE_APPLICATION_CREDENTIALS }}" > "${DBT_GOOGLE_APPLICATION_CREDENTIALS}"
+          printf '%s' "${{ secrets.MELTANO_GOOGLE_APPLICATION_CREDENTIALS }}" > "${MELTANO_GOOGLE_APPLICATION_CREDENTIALS}"
+          chmod 600 "${DBT_GOOGLE_APPLICATION_CREDENTIALS}" "${MELTANO_GOOGLE_APPLICATION_CREDENTIALS}"
 
       - name: Install Meltano plugins
         working-directory: extraction

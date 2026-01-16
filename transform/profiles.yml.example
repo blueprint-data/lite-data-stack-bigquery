@@ -7,7 +7,7 @@ lite_data_stack_bigquery:
       project: "{{ env_var('BIGQUERY_PROJECT_ID') }}"
       dataset: "{{ env_var('BIGQUERY_DATASET_ID') }}"
       location: "{{ env_var('BIGQUERY_LOCATION') }}"
-      keyfile: "{{ env_var('GOOGLE_APPLICATION_CREDENTIALS') }}"
+      keyfile: "{{ env_var('DBT_GOOGLE_APPLICATION_CREDENTIALS') }}"
       threads: 4
 
     ci:
@@ -16,7 +16,7 @@ lite_data_stack_bigquery:
       project: "{{ env_var('BIGQUERY_PROJECT_ID') }}"
       dataset: "{{ env_var('BIGQUERY_DATASET_ID') }}_ci"
       location: "{{ env_var('BIGQUERY_LOCATION') }}"
-      keyfile: "{{ env_var('GOOGLE_APPLICATION_CREDENTIALS') }}"
+      keyfile: "{{ env_var('DBT_GOOGLE_APPLICATION_CREDENTIALS') }}"
       threads: 4
 
     prod:
@@ -25,7 +25,7 @@ lite_data_stack_bigquery:
       project: "{{ env_var('BIGQUERY_PROJECT_ID') }}"
       dataset: "{{ env_var('BIGQUERY_DATASET_ID') }}"
       location: "{{ env_var('BIGQUERY_LOCATION') }}"
-      keyfile: "{{ env_var('GOOGLE_APPLICATION_CREDENTIALS') }}"
+      keyfile: "{{ env_var('DBT_GOOGLE_APPLICATION_CREDENTIALS') }}"
       threads: 4
 
   target: dev
