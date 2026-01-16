@@ -6,6 +6,15 @@ This template creates a simple data pipeline: it extracts data from the GitHub A
 
 It is aimed at small teams or projects starting their first stack: quick to spin up, easy to understand, and with CI/CD ready to automate tests and documentation.
 
+## 🎯 Prerequisites (read first)
+
+**Software required (install if missing)**
+
+- Python 3.11+: https://www.python.org/downloads/
+- Git: https://git-scm.com/downloads
+- Google Cloud account (billing-enabled project or rights to create one): https://console.cloud.google.com/
+- Optional but recommended: gcloud CLI https://cloud.google.com/sdk/docs/install
+
 ## What it includes
 
 - Extraction with Meltano (`tap-github` + `target-bigquery`)
@@ -15,19 +24,10 @@ It is aimed at small teams or projects starting their first stack: quick to spin
 
 ## Quick start (Happy Path)
 
-Minimum requirements:
-- [req] Python 3.11+
-- [req] Git
-- [req] A Google Cloud project with BigQuery enabled
-- [req] BigQuery datasets (raw/stg/marts)
-- [req] Service account JSON keys for dbt and Meltano
-- [req] A GCS bucket for Meltano state
-
-1) [GCP] Create a GCP project and service accounts
-
 If you do not have a Google Cloud account, create one. If you already have GCP, create a new project for this stack.
 
 In IAM & Admin:
+
 - Go to Service Accounts and create one account for dbt and one for Meltano
   (or reuse a single account for both).
 - For each service account, create a JSON key and download it.
@@ -36,9 +36,10 @@ In IAM & Admin:
   (example: `meltano@data.iam.gserviceaccount.com`).
 - Assign the role `BigQuery Data Owner` (or the minimum you need for datasets/jobs).
 
-2) [GCS] Create a GCS bucket for Meltano state
+2. [GCS] Create a GCS bucket for Meltano state
 
 In Cloud Storage -> Buckets:
+
 - Create a private bucket (example: `template-bigquery`).
 - Recommended settings:
   - Public access prevention: Enabled
@@ -47,18 +48,20 @@ In Cloud Storage -> Buckets:
   - Encryption: Google-managed
 
 Then in bucket permissions:
+
 - Add the Meltano service account (for example: `meltano@<project-id>.iam.gserviceaccount.com`).
 - Grant the role `Storage Object Admin`.
 
 This allows Meltano to create and manage state files.
 
-3) [DB] Create BigQuery datasets (or grant create permissions)
+3. [DB] Create BigQuery datasets (or grant create permissions)
 
 You will need datasets for raw and modeled data:
+
 - Raw: `<env>_tap_github` (for example `prod_tap_github`)
 - Modeled: `stg` and `marts` (prod/ci). For dev, dbt uses `SANDBOX_<DBT_USER>`.
 
-4) [CFG] Configure variables
+4. [CFG] Configure variables
 
 ```bash
 cd PROJECT_NAME
@@ -92,17 +95,18 @@ TAP_GITHUB_AUTH_TOKEN=ghp_xxx
 > [!] WARNING: dbt sources read from `<target>_tap_github`. Run Meltano in the
 > same environment as the dbt target you plan to build.
 
-5) [LOCAL] Set up the extraction environment
+5. [LOCAL] Set up the extraction environment
 
 ```bash
 cd extraction
 ./scripts/setup-local.sh
 source venv/bin/activate
+set -a; source ../.env; set +a
 ```
 
 This creates the venv, installs Meltano dependencies, and initializes the project.
 
-6) [TEST] Verify the state backend
+6. [TEST] Verify the state backend
 
 From `extraction/` with the venv active:
 
@@ -113,7 +117,7 @@ meltano state list
 
 Expected: no errors, and either an empty list or existing states.
 
-7) [EXT] Run extraction once (Meltano)
+7. [EXT] Run extraction once (Meltano)
 
 ```bash
 set -a; source ../.env; set +a
@@ -123,7 +127,7 @@ meltano --environment=prod run tap-github target-bigquery
 > [!] WARNING: dbt sources point to `<target>_tap_github` (for example `prod_tap_github`).
 > Run Meltano with the same environment as your dbt target.
 
-8) [DBT] Run transform and build models
+8. [DBT] Run transform and build models
 
 ```bash
 cd ../transform
@@ -139,7 +143,7 @@ dbt build --target prod
 > [i] INFO: `dbt build` runs models and tests, so it is used in PR/deploy.
 > [i] INFO: Every time you change a model, run `dbt build` again (or a selective build).
 
-9) [SQL] See results in the DB
+9. [SQL] See results in the DB
 
 ```sql
 select * from marts.github_commits limit 10;
@@ -147,7 +151,7 @@ select * from marts.github_committers limit 10;
 select commit_type, count(*) from marts.github_commits group by commit_type;
 ```
 
-10) [DOCS] Generate dbt docs (optional)
+10. [DOCS] Generate dbt docs (optional)
 
 ```bash
 cd ../transform
@@ -161,9 +165,9 @@ Opens at: http://localhost:8080
 
 ## Next steps
 
-1) View dbt docs to explore the DAG and columns.
-2) Add a new model and document it.
-3) Change the data source and adapt staging.
+1. View dbt docs to explore the DAG and columns.
+2. Add a new model and document it.
+3. Change the data source and adapt staging.
 
 ## Understanding the project
 
@@ -183,36 +187,15 @@ GitHub API
 - Marts are final models ready for analysis or BI.
 
 Real example from this project:
+
 - `stg_github_commits` -> `github_commits`
 
 ### Table of models and key columns
 
 All column documentation lives in:
+
 - `transform/models/staging/*.yml`
 - `transform/models/production/marts/*.yml`
-
-### Useful query examples
-
-```sql
--- Top 5 repos by commit volume
-select full_repo_name, count(*) as commit_count
-from marts.github_commits
-group by full_repo_name
-order by commit_count desc
-limit 5;
-
--- Commit types distribution
-select commit_type, count(*) as commit_count
-from marts.github_commits
-group by commit_type
-order by commit_count desc;
-
--- Most active committers (last 90 days)
-select github_login, commits_last_90_days
-from marts.github_committers
-order by commits_last_90_days desc
-limit 10;
-```
 
 ### Environments (dev, ci, prod)
 
@@ -255,9 +238,9 @@ dbt build
 
 ### Add a new model
 
-1) Create the SQL in `transform/models/staging` or `transform/models/production/marts`.
-2) Create the model YAML with descriptions for all columns and basic tests.
-3) Run a selective build.
+1. Create the SQL in `transform/models/staging` or `transform/models/production/marts`.
+2. Create the model YAML with descriptions for all columns and basic tests.
+3. Run a selective build.
 
 ```bash
 dbt build --select <nombre_del_modelo>
@@ -265,9 +248,9 @@ dbt build --select <nombre_del_modelo>
 
 ### Change the data source
 
-1) Edit `extraction/meltano.yml` to point to your new extractor.
-2) Update `transform/models/staging/source_github.yml` with the new dataset and tables.
-3) Rewrite the staging models to map the new columns.
+1. Edit `extraction/meltano.yml` to point to your new extractor.
+2. Update `transform/models/staging/source_github.yml` with the new dataset and tables.
+3. Rewrite the staging models to map the new columns.
 
 ## Quick repo layout
 
@@ -291,8 +274,6 @@ The workflows in `.github/workflows` are configured for this BigQuery stack
 - `MELTANO_GOOGLE_APPLICATION_CREDENTIALS` (base64-encoded JSON key)
 - `DBT_USER` (for sandbox datasets)
 - `TAP_GITHUB_AUTH_TOKEN`
-
-Optional:
 - `DBT_MANIFEST_URL` for custom slim CI
 - `MELTANO_STATE_BACKEND_URI` if you want Meltano state in GCS
 - `TARGET_BIGQUERY_PROJECT` if different from `BIGQUERY_PROJECT_ID`
@@ -321,6 +302,7 @@ base64 -i /path/to/service-account.json | tr -d '\n'
 ### SQLFluff
 
 SQLFluff is a SQL linter. It is used to:
+
 - keep consistent style in models
 - catch basic issues before running dbt
 
@@ -328,9 +310,9 @@ In PR, only modified SQL models are linted.
 
 ### Enable GitHub Pages
 
-1) Go to Settings -> Pages.
-2) In Source, choose GitHub Actions.
-3) After a push to `main`, the docs are published.
+1. Go to Settings -> Pages.
+2. In Source, choose GitHub Actions.
+3. After a push to `main`, the docs are published.
 
 </details>
 
