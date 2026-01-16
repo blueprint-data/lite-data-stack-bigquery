@@ -20,7 +20,7 @@ Minimum requirements:
 - [req] Git
 - [req] A Google Cloud project with BigQuery enabled
 - [req] BigQuery datasets (raw/stg/marts)
-- [req] A service account JSON key
+- [req] Service account JSON keys for dbt and Meltano
 - [req] A GCS bucket for Meltano state
 
 1) [GCP] Create a GCP project and service accounts
@@ -71,19 +71,24 @@ Edit `.env` with your credentials. Minimal example:
 BIGQUERY_PROJECT_ID=your-gcp-project
 BIGQUERY_DATASET_ID=analytics
 BIGQUERY_LOCATION=US
-GOOGLE_APPLICATION_CREDENTIALS=/path/to/dbt-service-account.json
+DBT_GOOGLE_APPLICATION_CREDENTIALS=/path/to/dbt-service-account.json
+MELTANO_GOOGLE_APPLICATION_CREDENTIALS=/path/to/meltano-service-account.json
+GOOGLE_APPLICATION_CREDENTIALS=${MELTANO_GOOGLE_APPLICATION_CREDENTIALS}
 MELTANO_STATE_BACKEND_URI=gs://your-bucket/meltano/state
 
 TARGET_BIGQUERY_PROJECT=${BIGQUERY_PROJECT_ID}
 TARGET_BIGQUERY_LOCATION=${BIGQUERY_LOCATION}
-TARGET_BIGQUERY_CREDENTIALS_PATH=/path/to/meltano-service-account.json
+TARGET_BIGQUERY_CREDENTIALS_PATH=${MELTANO_GOOGLE_APPLICATION_CREDENTIALS}
 
 DBT_USER=local
 
 TAP_GITHUB_AUTH_TOKEN=ghp_xxx
 ```
 
-> [i] INFO: You can point dbt and Meltano to the same JSON key if you want.
+> [i] INFO: If you prefer a single service account, set both credential paths to
+> the same file.
+> [i] INFO: `GOOGLE_APPLICATION_CREDENTIALS` should point to the Meltano account
+> so the GCS state backend can write to your bucket.
 > [!] WARNING: dbt sources read from `<target>_tap_github`. Run Meltano in the
 > same environment as the dbt target you plan to build.
 
@@ -274,24 +279,24 @@ dbt build --select <nombre_del_modelo>
 <details>
 <summary>CI/CD Setup</summary>
 
-The workflows in `.github/workflows` are templates and should be aligned to this
-BigQuery stack (tap-github + target-bigquery) before enabling.
+The workflows in `.github/workflows` are configured for this BigQuery stack
+(tap-github + target-bigquery). Make sure the secrets below are set.
 
-### Required GitHub secrets (after aligning workflows)
+### Required GitHub secrets
 
 - `BIGQUERY_PROJECT_ID`
 - `BIGQUERY_DATASET_ID`
 - `BIGQUERY_LOCATION`
-- `GOOGLE_APPLICATION_CREDENTIALS`
-- `TARGET_BIGQUERY_PROJECT`
-- `TARGET_BIGQUERY_LOCATION`
-- `TARGET_BIGQUERY_CREDENTIALS_PATH`
+- `DBT_GOOGLE_APPLICATION_CREDENTIALS`
+- `MELTANO_GOOGLE_APPLICATION_CREDENTIALS`
 - `DBT_USER` (for sandbox datasets)
 - `TAP_GITHUB_AUTH_TOKEN`
 
 Optional:
 - `DBT_MANIFEST_URL` for custom slim CI
 - `MELTANO_STATE_BACKEND_URI` if you want Meltano state in GCS
+- `TARGET_BIGQUERY_PROJECT` if different from `BIGQUERY_PROJECT_ID`
+- `TARGET_BIGQUERY_LOCATION` if different from `BIGQUERY_LOCATION`
 
 ### Workflows
 
@@ -299,7 +304,7 @@ Optional:
 - `dbt-pr-ci.yml`: on PR. Runs dbt build in sandbox and lints with SQLFluff.
 - `dbt-cd-docs.yml`: on push to `main`. Runs dbt build in prod and publishes docs.
 
-> [i] INFO: PR and deploy use `dbt build`; the scheduled pipeline uses only `dbt run`.
+> [i] INFO: PR, deploy, and the scheduled pipeline use `dbt build`.
 
 ### Slim CI (prod manifest)
 
@@ -369,7 +374,7 @@ meltano --environment=prod state clear --all --force
 
 Error: Required key is missing from config (Meltano)
 
-Make sure `BIGQUERY_*`, `TARGET_BIGQUERY_*`, and credentials paths are set in `.env` and reload:
+Make sure `BIGQUERY_*`, `TARGET_BIGQUERY_*`, and Meltano credential paths are set in `.env` and reload:
 
 ```bash
 set -a; source .env; set +a
