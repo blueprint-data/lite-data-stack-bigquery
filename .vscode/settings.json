@@ -6,7 +6,7 @@
   "sqlfluff.format.enabled": true,
   "sqlfluff.executablePath": "${workspaceFolder}/transform/venv/bin/sqlfluff",
   "sqlfluff.config": "${workspaceFolder}/.sqlfluff",
-  "sqlfluff.dialect": "postgres",
+  "sqlfluff.dialect": "bigquery",
   "sqlfluff.linter.run": "onSave",
   "files.exclude": {
     "**/__pycache__": true,
